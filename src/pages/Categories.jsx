@@ -1,4 +1,5 @@
 import { useState } from "react";
+import Table from "../components/Table";
 
 const DEFAULT_CATEGORIES = [
     "Food",
@@ -234,65 +235,48 @@ function Categories({ onCategoryClick }) {
                 </select>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                        <thead>
-                            <tr className="bg-gray-50 border-b border-gray-200 text-left text-gray-500 font-medium">
-                                <th className="px-4 py-3">Category</th>
-                                <th className="px-4 py-3">Description</th>
-                                <th className="px-4 py-3">Transaction Trend</th>
-                                {/* <th className="px-4 py-3 text-right">Amount</th> */}
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {filtered.map((t) => (
-                                <tr
-                                    key={t.id}
-                                    className="hover:bg-gray-50 transition-colors"
-                                >
-                                    <td className="px-4 py-3">
-                                        <button
-                                            onClick={() =>
-                                                onCategoryClick(t.category)
-                                            }
-                                            className="inline-block px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-600 font-medium hover:bg-indigo-100 transition-colors cursor-pointer"
-                                        >
-                                            {t.category}
-                                        </button>
-                                    </td>
-                                    <td className="px-4 py-3 text-gray-800 font-medium">
-                                        {t.description}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <span
-                                            className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                                                t.type === "income"
-                                                    ? "bg-green-50 text-green-600"
-                                                    : "bg-red-50 text-red-500"
-                                            }`}
-                                        >
-                                            {t.type.charAt(0).toUpperCase() +
-                                                t.type.slice(1)}
-                                        </span>
-                                    </td>
-                                    <td
-                                        className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${
-                                            t.type === "income"
-                                                ? "text-green-600"
-                                                : "text-red-500"
-                                        }`}
-                                    >
-                                        {t.type === "income" ? "+" : "-"}$
-                                        {t.amount ? t.amount.toFixed(2) : 0.0}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+            <Table
+                columns={[
+                    {
+                        key: 'category',
+                        label: 'Category',
+                        render: (t) => (
+                            <button
+                                onClick={() => onCategoryClick(t.category)}
+                                className="inline-block px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-600 font-medium hover:bg-indigo-100 transition-colors cursor-pointer"
+                            >
+                                {t.category}
+                            </button>
+                        ),
+                    },
+                    { key: 'description', label: 'Description', className: 'text-gray-800 font-medium' },
+                    {
+                        key: 'type',
+                        label: 'Transaction Trend',
+                        render: (t) => (
+                            <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                                t.type === 'income' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'
+                            }`}>
+                                {t.type.charAt(0).toUpperCase() + t.type.slice(1)}
+                            </span>
+                        ),
+                    },
+                    {
+                        key: 'amount',
+                        label: 'Amount',
+                        headerClass: 'text-right',
+                        className: 'text-right font-semibold whitespace-nowrap',
+                        render: (t) => (
+                            <span className={t.type === 'income' ? 'text-green-600' : 'text-red-500'}>
+                                {t.type === 'income' ? '+' : '-'}${t.amount ? t.amount.toFixed(2) : '0.00'}
+                            </span>
+                        ),
+                    },
+                ]}
+                data={filtered}
+                resetKey={search + filterCategory}
+                emptyMessage="No transactions match your filters."
+            />
 
             {showModal && (
                 <AddCategoryModal

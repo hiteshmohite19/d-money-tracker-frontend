@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { TRANSACTION_TYPE, SUBCATEGORY_DATA } from '../data/transactions'
 import AddSubCategoryModal from '../components/AddSubCategoryModal'
 import AddTransactionModal from '../components/AddTransactionModal'
+import Table from '../components/Table'
 
 function SubCategories({ category, onBack }) {
   const initial = SUBCATEGORY_DATA[category] ?? []
@@ -86,53 +87,38 @@ function SubCategories({ category, onBack }) {
         />
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-left text-gray-500 font-medium">
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Description</th>
-                <th className="px-4 py-3">Expense Type</th>
-                <th className="px-4 py-3 text-right">Amount</th>
-                <th className="px-4 py-3">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-gray-400">
-                    No entries found. Add a sub-category and transaction to get started.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((r) => (
-                  <tr key={r.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-gray-800 font-medium whitespace-nowrap">{r.subCategory}</td>
-                    <td className="px-4 py-3 text-gray-600">{r.description}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
-                        r.type === TRANSACTION_TYPE.CREDIT
-                          ? 'bg-green-50 text-green-600'
-                          : 'bg-red-50 text-red-500'
-                      }`}>
-                        {r.type.charAt(0).toUpperCase() + r.type.slice(1)}
-                      </span>
-                    </td>
-                    <td className={`px-4 py-3 text-right font-semibold whitespace-nowrap ${
-                      r.type === TRANSACTION_TYPE.CREDIT ? 'text-green-600' : 'text-red-500'
-                    }`}>
-                      {r.type === TRANSACTION_TYPE.CREDIT ? '+' : '-'}${r.amount.toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 whitespace-nowrap">{r.date}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <Table
+        columns={[
+          { key: 'subCategory', label: 'Name', className: 'text-gray-800 font-medium whitespace-nowrap' },
+          { key: 'description', label: 'Description', className: 'text-gray-600' },
+          {
+            key: 'type',
+            label: 'Expense Type',
+            render: (r) => (
+              <span className={`inline-block px-2 py-0.5 rounded-full text-xs font-medium ${
+                r.type === TRANSACTION_TYPE.CREDIT ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-500'
+              }`}>
+                {r.type.charAt(0).toUpperCase() + r.type.slice(1)}
+              </span>
+            ),
+          },
+          {
+            key: 'amount',
+            label: 'Amount',
+            headerClass: 'text-right',
+            className: 'text-right font-semibold whitespace-nowrap',
+            render: (r) => (
+              <span className={r.type === TRANSACTION_TYPE.CREDIT ? 'text-green-600' : 'text-red-500'}>
+                {r.type === TRANSACTION_TYPE.CREDIT ? '+' : '-'}${r.amount.toFixed(2)}
+              </span>
+            ),
+          },
+          { key: 'date', label: 'Date', className: 'text-gray-500 whitespace-nowrap' },
+        ]}
+        data={filtered}
+        resetKey={search}
+        emptyMessage="No entries found. Add a sub-category and transaction to get started."
+      />
 
       {showSubCatModal && (
         <AddSubCategoryModal
