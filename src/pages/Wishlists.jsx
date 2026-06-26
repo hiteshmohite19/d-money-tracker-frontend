@@ -1,25 +1,65 @@
-import { useState } from 'react'
-import { SAMPLE_EXPENSES } from '../data/expenses'
-import AddExpenseModal from '../components/AddExpenseModal'
-import ExpenseCard from '../components/ExpenseCard'
+import { useState, useEffect } from 'react'
+import { get, post } from '../api/client'
+import AddExpenseModal from '../components/AddWishlistModal'
+import ExpenseCard from '../components/WishlistCard'
 
 export default function Wishlists() {
-    const [expenses, setExpenses] = useState(SAMPLE_EXPENSES);
+    const [expenses, setExpenses] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
     const [search, setSearch] = useState("");
     const [showModal, setShowModal] = useState(false);
+    const [editingExpense, setEditingExpense] = useState(null);
+
+    useEffect(() => {
+        get('/api/wishlist/')
+            .then((data) => {
+                const items = Array.isArray(data) ? data : (data.results ?? data.wishlists ?? []);
+                setExpenses(items);
+            })
+            .catch((err) => setError(err.message))
+            .finally(() => setLoading(false));
+    }, []);
 
     const filtered = expenses.filter(
         (e) =>
-            e.name.toLowerCase().includes(search.toLowerCase()) ||
+            e.item.toLowerCase().includes(search.toLowerCase()) ||
             e.description.toLowerCase().includes(search.toLowerCase()),
     );
 
     function handleAdd(expense) {
-        setExpenses((prev) => [expense, ...prev]);
+        const user = JSON.parse(localStorage.getItem('user') ?? '{}');
+        post('/api/wishlist/create/', {
+            item: expense.name,
+            description: expense.description,
+            price: expense.price,
+            expected_date: expense.expectedDate,
+            user_id: user.id,
+        })
+            .then((data) => {
+                const items = Array.isArray(data) ? data : (data.results ?? data.wishlists ?? []);
+                setExpenses(items);
+            })
+            .catch((err) => setError(err.message));
     }
 
     function handleDelete(id) {
         setExpenses((prev) => prev.filter((e) => e.id !== id));
+    }
+
+    function handleEdit(updated) {
+        post(`/api/wishlist/${updated.id}/update/`, {
+            item: updated.name,
+            description: updated.description,
+            price: updated.price,
+            expected_date: updated.expectedDate,
+        })
+            .then((data) => {
+                const items = Array.isArray(data) ? data : (data.results ?? data.wishlists ?? []);
+                setExpenses(items);
+            })
+            .catch((err) => setError(err.message))
+            .finally(() => setEditingExpense(null));
     }
 
     return (
@@ -28,7 +68,7 @@ export default function Wishlists() {
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
                 <div>
                     <h2 className="text-2xl font-bold text-gray-800">
-                        Expenses
+                        Wishlists
                     </h2>
                     <p className="text-sm text-gray-500 mt-1">
                         {filtered.length} item{filtered.length !== 1 ? "s" : ""}
@@ -80,7 +120,11 @@ export default function Wishlists() {
             </div>
 
             {/* Cards grid */}
-            {filtered.length === 0 ? (
+            {loading ? (
+                <div className="text-sm text-gray-400 py-12 text-center">Loading…</div>
+            ) : error ? (
+                <div className="text-sm text-red-500 py-12 text-center">{error}</div>
+            ) : filtered.length === 0 ? (
                 <div className="bg-white rounded-xl shadow-sm px-4 py-16 text-center text-gray-400 text-sm">
                     No expenses found.
                 </div>
@@ -91,6 +135,7 @@ export default function Wishlists() {
                             key={e.id}
                             expense={e}
                             onDelete={handleDelete}
+                            onEdit={setEditingExpense}
                         />
                     ))}
                 </div>
@@ -100,6 +145,13 @@ export default function Wishlists() {
                 <AddExpenseModal
                     onAdd={handleAdd}
                     onClose={() => setShowModal(false)}
+                />
+            )}
+            {editingExpense && (
+                <AddExpenseModal
+                    initialData={editingExpense}
+                    onEdit={handleEdit}
+                    onClose={() => setEditingExpense(null)}
                 />
             )}
         </div>

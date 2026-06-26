@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { CURRENCY } from '../constants'
+import { post } from '../api/client'
 
 const NAV_LINKS = ['Features', 'How It Works', 'Reports']
 
@@ -89,33 +91,163 @@ const STATS = [
 ]
 
 function SignInModal({ onClose, onSignIn }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [mobile, setMobile] = useState('')
+  const [mobileError, setMobileError] = useState('')
+  const [step, setStep] = useState('mobile') // 'mobile' | 'otp'
+  const [otp, setOtp] = useState('')
+  const [otpError, setOtpError] = useState('')
+  const [sentMobile, setSentMobile] = useState('')
+
+  function saveSession(data) {
+    localStorage.setItem('token', data.access_token)
+    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    localStorage.setItem('categories', JSON.stringify(data.user_categories ?? data))
+    onSignIn()
+  }
+
+  async function handleGoogleSignIn() {
+    setLoading(true)
+    setError('')
+    try {
+      const data = await post('/api/users/login/', { mobile: '+918956047638' })
+      saveSession(data)
+    } catch (err) {
+      setError(err.message || 'Sign in failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  function handleMobileSubmit(e) {
+    e.preventDefault()
+    const digits = mobile.replace(/\D/g, '')
+    if (digits.length !== 10) return setMobileError('Enter a valid 10-digit mobile number.')
+    if (!/^[6-9]/.test(digits)) return setMobileError('Number must start with 6, 7, 8, or 9.')
+    setMobileError('')
+    setSentMobile(`+91${digits}`)
+    setStep('otp')
+  }
+
+  async function handleOtpSubmit(e) {
+    e.preventDefault()
+    if (otp.length !== 6) return setOtpError('Enter the 6-digit OTP.')
+    setOtpError('')
+    setLoading(true)
+    setError('')
+    try {
+      const data = await post('/api/users/verify-otp/', { mobile: sentMobile, otp })
+      saveSession(data)
+    } catch (err) {
+      setError(err.message || 'Invalid OTP. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8 text-center">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-8">
         <div className="w-12 h-12 rounded-xl bg-indigo-50 flex items-center justify-center mx-auto mb-4">
           <svg className="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-1">Welcome to MoneyTracker</h2>
-        <p className="text-sm text-gray-500 mb-8">Sign in to start tracking your finances.</p>
+        <h2 className="text-xl font-bold text-gray-900 mb-1 text-center">Welcome to MoneyTracker</h2>
+        <p className="text-sm text-gray-500 mb-6 text-center">
+          {step === 'otp'
+            ? `Enter the 6-digit OTP sent to ${sentMobile}`
+            : 'Sign in to start tracking your finances.'}
+        </p>
 
-        <button
-          onClick={onSignIn}
-          className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-          </svg>
-          Continue with Google
-        </button>
+        {step === 'mobile' ? (
+          <>
+            {/* Mobile sign-in */}
+            <form onSubmit={handleMobileSubmit} className="mb-4">
+              <label className="block text-xs font-medium text-gray-600 mb-1">Mobile Number</label>
+              <div className="flex">
+                <span className="inline-flex items-center px-3 border border-r-0 border-gray-300 rounded-l-xl bg-gray-50 text-gray-500 text-sm">+91</span>
+                <input
+                  type="tel"
+                  value={mobile}
+                  onChange={(e) => { setMobile(e.target.value.replace(/\D/g, '').slice(0, 10)); setMobileError('') }}
+                  placeholder="9XXXXXXXXX"
+                  disabled={loading}
+                  autoFocus
+                  className="w-full border border-gray-300 rounded-r-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
+                />
+              </div>
+              {mobileError && <p className="mt-1 text-xs text-red-500">{mobileError}</p>}
+              <button
+                type="submit"
+                disabled={loading}
+                className="mt-3 w-full py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+              >
+                Continue with Mobile
+              </button>
+            </form>
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-xs text-gray-400">or</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            {/* Google sign-in */}
+            <button
+              onClick={handleGoogleSignIn}
+              disabled={loading}
+              className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" />
+                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+              </svg>
+              Continue with Google
+            </button>
+          </>
+        ) : (
+          /* OTP step */
+          <form onSubmit={handleOtpSubmit}>
+            <label className="block text-xs font-medium text-gray-600 mb-1">OTP</label>
+            <input
+              type="tel"
+              value={otp}
+              onChange={(e) => { setOtp(e.target.value.replace(/\D/g, '').slice(0, 6)); setOtpError('') }}
+              placeholder="------"
+              disabled={loading}
+              autoFocus
+              className="w-full border border-gray-300 rounded-xl px-3 py-2.5 text-sm text-center tracking-[0.5em] font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-60"
+            />
+            {otpError && <p className="mt-1 text-xs text-red-500">{otpError}</p>}
+            <button
+              type="submit"
+              disabled={loading}
+              className="mt-3 w-full py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? 'Verifying…' : 'Verify OTP'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setStep('mobile'); setOtp(''); setError('') }}
+              disabled={loading}
+              className="mt-2 w-full text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
+            >
+              Change number
+            </button>
+          </form>
+        )}
+
+        {error && <p className="mt-3 text-xs text-red-500 text-center">{error}</p>}
 
         <button
           onClick={onClose}
-          className="mt-4 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+          disabled={loading}
+          className="mt-4 w-full text-xs text-gray-400 hover:text-gray-600 disabled:opacity-40 transition-colors"
         >
           Cancel
         </button>
@@ -277,16 +409,16 @@ export default function Landing({ onSignIn }) {
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
                       <p className="text-gray-400">Income</p>
-                      <p className="font-semibold text-green-600">${income.toLocaleString()}</p>
+                      <p className="font-semibold text-green-600">{CURRENCY}{income.toLocaleString()}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Expenses</p>
-                      <p className="font-semibold text-red-500">${expense.toLocaleString()}</p>
+                      <p className="font-semibold text-red-500">{CURRENCY}{expense.toLocaleString()}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Net</p>
                       <p className={`font-semibold ${net >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                        {net >= 0 ? '+' : ''}${net.toLocaleString()}
+                        {net >= 0 ? '+' : ''}{CURRENCY}{net.toLocaleString()}
                       </p>
                     </div>
                   </div>

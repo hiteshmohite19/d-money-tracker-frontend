@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
+import { CURRENCY } from '../constants'
 import { ALL_TRANSACTIONS, TRANSACTION_TYPE } from '../data/transactions'
 import Section from '../components/reports/Section'
 import Row from '../components/reports/Row'
 import RankItem from '../components/reports/RankItem'
 
-const fmt = (n) => `$${n.toFixed(2)}`
+const fmt = (n) => `${CURRENCY}${n.toFixed(2)}`
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December']
@@ -113,7 +114,7 @@ export default function Reports() {
               key={cat}
               rank={i + 1}
               label={cat}
-              sub={`${fmt(total / stats.totalExpenses * 100).replace('$', '')}% of total expenses`}
+              sub={`${fmt(total / stats.totalExpenses * 100).replace(CURRENCY, '')}% of total expenses`}
               value={fmt(total)}
               valueClass="text-red-500"
             />

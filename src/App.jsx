@@ -1,4 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 import Navbar from './components/Navbar'
 import Sidebar from './components/Sidebar'
 import Dashboard from './pages/Dashboard'
@@ -13,8 +15,15 @@ import Landing from './pages/Landing'
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activePage, setActivePage] = useState('Dashboard')
-  const [isLanding, setIsLanding] = useState(true)
+  const [isLanding, setIsLanding] = useState(() => !localStorage.getItem('token'))
   const [selectedCategory, setSelectedCategory] = useState(null)
+  const [categorySource, setCategorySource] = useState('Categories')
+
+  useEffect(() => {
+    if (!localStorage.getItem('token')) {
+      return
+    }
+  }, [])
 
   if (isLanding) {
     return (
@@ -28,6 +37,7 @@ function App() {
   }
 
   function handleCategoryClick(category) {
+    setCategorySource(activePage)
     setSelectedCategory(category)
     setActivePage('SubCategories')
   }
@@ -37,7 +47,7 @@ function App() {
       return (
         <SubCategories
           category={selectedCategory}
-          onBack={() => handleNavigate('Categories')}
+          onBack={() => handleNavigate(categorySource)}
         />
       )
     }
@@ -51,7 +61,7 @@ function App() {
       return <Dashboard />
     }
     if (activePage === 'Profile') {
-      return <Profile />
+      return <Profile onLogout={() => { localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('categories'); setIsLanding(true) }} />
     }
     if (activePage === 'Reports') {
       return <Reports />
@@ -64,6 +74,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-100">
+      <ToastContainer position="top-right" autoClose={3000} />
       <Navbar onToggleSidebar={() => setSidebarOpen((prev) => !prev)} />
       <Sidebar
         isOpen={sidebarOpen}

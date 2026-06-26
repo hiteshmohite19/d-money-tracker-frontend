@@ -1,15 +1,19 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { toast } from 'react-toastify'
+import Input from '../components/Input'
+import { CURRENCY } from '../constants'
+import { get, post } from '../api/client'
 
-const INITIAL = {
-  firstName: 'John',
-  lastName: 'Doe',
-  mobile: '+1 (555) 000-1234',
-  mobileVerified: true,
-  email: 'john.doe@example.com',
-  emailVerified: true,
-  income: '5000',
-  expectedExpense: '3500',
-  expectedSavings: '1500',
+const emptyProfile = {
+  firstName: '',
+  lastName: '',
+  mobile: '',
+  mobileVerified: false,
+  email: '',
+  emailVerified: false,
+  income: '',
+  expectedExpense: '',
+  expectedSavings: '',
   photo: null,
 }
 
@@ -42,13 +46,13 @@ function Field({ label, value, editing, onChange, type = 'text', prefix }) {
               {prefix}
             </span>
           )}
-          <input
+          <Input
             type={type}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             min={type === 'number' ? '0' : undefined}
             step={type === 'number' ? '0.01' : undefined}
-            className={`w-full border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${prefix ? 'rounded-r-lg' : 'rounded-lg'}`}
+            className={prefix ? 'rounded-l-none rounded-r-lg' : ''}
           />
         </div>
       ) : (
@@ -60,13 +64,33 @@ function Field({ label, value, editing, onChange, type = 'text', prefix }) {
   )
 }
 
-export default function Profile() {
-  const [data, setData] = useState(INITIAL)
-  const [draft, setDraft] = useState(INITIAL)
+export default function Profile({ onLogout }) {
+  const [data, setData] = useState(emptyProfile)
+  const [draft, setDraft] = useState(emptyProfile)
   const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [photoPreview, setPhotoPreview] = useState(null)
   const [draftPhotoPreview, setDraftPhotoPreview] = useState(null)
   const fileRef = useRef(null)
+
+  useEffect(() => {
+    get('/api/users/profile/').then((u) => {
+      const mapped = {
+          firstName: u.first_name ?? u.firstName ?? "",
+          lastName: u.last_name ?? u.lastName ?? "",
+          mobile: u.mobile ?? u.mobile_number ?? u.phone ?? "",
+          mobileVerified: u.mobile_verified ?? u.mobileVerified ?? false,
+          email: u.email ?? "",
+          emailVerified: u.email_verified ?? u.emailVerified ?? false,
+          income: u.income ?? u.monthly_income ?? "",
+          expectedExpense: u.estimated_expense ?? u.expectedExpense ?? "",
+          expectedSavings: u.expected_savings ?? u.expectedSavings ?? "",
+          photo: null,
+      };
+      setData(mapped)
+      setDraft(mapped)
+    }).catch(() => {})
+  }, [])
 
   function handleEdit() {
     setDraft(data)
@@ -80,10 +104,29 @@ export default function Profile() {
     setEditing(false)
   }
 
-  function handleSave() {
-    setData(draft)
-    setPhotoPreview(draftPhotoPreview)
-    setEditing(false)
+  async function handleSave() {
+    setSaving(true)
+    try {
+      await post("/api/users/update-user/", {
+          first_name: draft.firstName,
+          last_name: draft.lastName,
+          income: draft.income ? parseFloat(draft.income) : null,
+          estimated_expense: draft.expectedExpense
+              ? parseFloat(draft.expectedExpense)
+              : null,
+          expected_savings: draft.expectedSavings
+              ? parseFloat(draft.expectedSavings)
+              : null,
+      });
+      setData(draft)
+      setPhotoPreview(draftPhotoPreview)
+      setEditing(false)
+      toast.success('Profile updated.')
+    } catch (err) {
+      toast.error(err.message || 'Failed to update profile.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   function handlePhoto(e) {
@@ -119,21 +162,33 @@ export default function Profile() {
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                disabled={saving}
+                className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-60"
               >
-                Save Changes
+                {saving ? 'Saving…' : 'Save Changes'}
               </button>
             </>
           ) : (
-            <button
-              onClick={handleEdit}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-              Edit
-            </button>
+            <>
+              <button
+                onClick={handleEdit}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit
+              </button>
+              <button
+                onClick={onLogout}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm border border-red-200 text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
+                </svg>
+                Logout
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -208,9 +263,9 @@ export default function Profile() {
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Financial</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <Field label="Monthly Income" editing={editing} type="number" prefix="$" {...field('income')} />
-          <Field label="Expected Expense" editing={editing} type="number" prefix="$" {...field('expectedExpense')} />
-          <Field label="Expected Savings" editing={editing} type="number" prefix="$" {...field('expectedSavings')} />
+          <Field label="Monthly Income" editing={editing} type="number" prefix={CURRENCY} {...field('income')} />
+          <Field label="Expected Expense" editing={editing} type="number" prefix={CURRENCY} {...field('expectedExpense')} />
+          <Field label="Expected Savings" editing={editing} type="number" prefix={CURRENCY} {...field('expectedSavings')} />
         </div>
       </div>
     </div>
