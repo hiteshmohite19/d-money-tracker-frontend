@@ -35,7 +35,7 @@ function VerifiedBadge({ verified }) {
   )
 }
 
-function Field({ label, value, editing, onChange, type = 'text', prefix }) {
+function Field({ label, value, editing, onChange, isNumeric, prefix }) {
   return (
     <div>
       <label className="block text-xs font-medium text-gray-500 mb-1">{label}</label>
@@ -47,11 +47,10 @@ function Field({ label, value, editing, onChange, type = 'text', prefix }) {
             </span>
           )}
           <Input
-            type={type}
+            type="text"
+            inputMode={isNumeric ? 'decimal' : undefined}
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            min={type === 'number' ? '0' : undefined}
-            step={type === 'number' ? '0.01' : undefined}
             className={prefix ? 'rounded-l-none rounded-r-lg' : ''}
           />
         </div>
@@ -263,9 +262,9 @@ export default function Profile({ onLogout }) {
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Financial</h3>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-          <Field label="Monthly Income" editing={editing} type="number" prefix={CURRENCY} {...field('income')} />
-          <Field label="Expected Expense" editing={editing} type="number" prefix={CURRENCY} {...field('expectedExpense')} />
-          <Field label="Expected Savings" editing={editing} type="number" prefix={CURRENCY} {...field('expectedSavings')} />
+          <Field label="Monthly Income" editing={editing} isNumeric prefix={CURRENCY} {...field('income')} />
+          <Field label="Expected Expense" editing={editing} isNumeric prefix={CURRENCY} {...field('expectedExpense')} />
+          <Field label="Expected Savings" editing={editing} isNumeric prefix={CURRENCY} {...field('expectedSavings')} />
         </div>
       </div>
     </div>

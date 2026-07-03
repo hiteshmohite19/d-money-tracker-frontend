@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { GoogleOAuthProvider } from '@react-oauth/google'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
 import Navbar from './components/Navbar'
@@ -20,14 +21,31 @@ function App() {
   const [categorySource, setCategorySource] = useState('Categories')
 
   useEffect(() => {
-    if (!localStorage.getItem('token')) {
-      return
-    }
+
+
+    window.history.pushState(null, "", window.location.href);
+
+    const handlePopState = () => {
+        window.history.pushState(null, "", window.location.href);
+    };
+
+    window.addEventListener("popstate", handlePopState);
+
+    return () => {
+
+      if (!localStorage.getItem("token")) {
+          return;
+      }
+      window.removeEventListener("popstate", handlePopState);
+    };
+
   }, [])
 
   if (isLanding) {
     return (
-      <Landing onSignIn={() => setIsLanding(false)} />
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
+        <Landing onSignIn={() => setIsLanding(false)} />
+      </GoogleOAuthProvider>
     )
   }
 

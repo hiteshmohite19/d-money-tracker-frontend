@@ -196,9 +196,8 @@ export default function AddTransactionModal({
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Amount ({CURRENCY})</label>
                                 <Input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={form.amount}
                                     onChange={(e) => field("amount", e.target.value)}
                                     placeholder="0.00"
@@ -224,9 +223,8 @@ export default function AddTransactionModal({
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Duration (months)</label>
                                         <Input
-                                            type="number"
-                                            min="1"
-                                            step="1"
+                                            type="text"
+                                            inputMode="numeric"
                                             value={form.emiDuration}
                                             onChange={(e) => field("emiDuration", e.target.value)}
                                             placeholder="e.g. 12"

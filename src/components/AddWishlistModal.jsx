@@ -69,9 +69,8 @@ export default function AddExpenseModal({ onAdd, onEdit, onClose, initialData })
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Price ({CURRENCY})</label>
                 <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
+                  type="text"
+                  inputMode="decimal"
                   value={form.price}
                   onChange={(e) => field('price', e.target.value)}
                   placeholder="0.00"

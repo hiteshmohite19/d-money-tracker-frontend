@@ -85,7 +85,7 @@ export default function Transactions({ onCategoryClick }) {
             label: "Category",
             render: (t) => (
                 <button
-                    onClick={() => onCategoryClick?.({ id: t.category_id ?? t.user_category, name: t.category })}
+                    onClick={() => onCategoryClick?.({ id: t.category_id ?? t.user_category_id, name: t.category })}
                     className="inline-block px-2 py-0.5 rounded-full text-xs bg-indigo-50 text-indigo-600 font-medium hover:bg-indigo-100 transition-colors"
                 >
                     {t.category}
