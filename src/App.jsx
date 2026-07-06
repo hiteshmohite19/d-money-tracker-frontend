@@ -43,7 +43,7 @@ function App() {
 
   if (isLanding) {
     return (
-      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
+      <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
         <Landing onSignIn={() => setIsLanding(false)} />
       </GoogleOAuthProvider>
     )
