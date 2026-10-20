@@ -102,8 +102,7 @@ function SignInModal({ onClose, onSignIn }) {
   // const [sentMobile, setSentMobile] = useState('')
 
   function saveSession(data) {
-    localStorage.setItem('token', data.access_token)
-    if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
+    // Auth tokens arrive as HttpOnly cookies; only non-secret data is kept here.
     localStorage.setItem('categories', JSON.stringify(data.user_categories ?? data))
     onSignIn()
   }

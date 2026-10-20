@@ -11,6 +11,7 @@ function redact(value) {
 
 async function loggedFetch(url, options = {}) {
   const method = options.method ?? 'GET'
+  options = { ...options, credentials: 'include' }
   const start = performance.now()
   const reqBody = options.body ? redact(JSON.parse(options.body)) : undefined
   console.log(`[API] → ${method} ${url}`, reqBody ?? '')
@@ -29,27 +30,60 @@ async function loggedFetch(url, options = {}) {
   }
 }
 
-function authHeaders() {
-  const token = localStorage.getItem('token')
+// Auth tokens live in HttpOnly cookies set by the backend; JS never sees them.
+// The backend also sets a readable `csrf_token` cookie that we echo back in a header.
+const CSRF_COOKIE = 'csrf_token'
+const CSRF_HEADER = 'X-CSRF-Token'
+
+function getCookie(name) {
+  const match = document.cookie.split('; ').find((c) => c.startsWith(`${name}=`))
+  return match ? decodeURIComponent(match.slice(name.length + 1)) : null
+}
+
+function authHeaders(method = 'GET') {
+  const csrf = method === 'GET' ? null : getCookie(CSRF_COOKIE)
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(csrf ? { [CSRF_HEADER]: csrf } : {}),
   }
 }
 
-export async function refreshToken() {
-  const refresh_token = localStorage.getItem('refresh_token')
-  const res = await loggedFetch(`${BASE_URL}/api/users/refresh-token`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ refresh_token }),
+let refreshPromise = null
+
+export function refreshToken() {
+  // Share one in-flight refresh between concurrent requests that hit an expired token.
+  refreshPromise ??= (async () => {
+    const res = await loggedFetch(`${BASE_URL}/api/users/refresh-token`, {
+      method: 'POST',
+      headers: authHeaders('POST'),
+    })
+    if (!res.ok) throw new Error('Session expired. Please sign in again.')
+    const data = await parseResponse(res)
+    if (data?.user_categories) localStorage.setItem('categories', JSON.stringify(data.user_categories))
+  })().finally(() => {
+    refreshPromise = null
   })
-  if (!res.ok) throw new Error('Session expired. Please sign in again.')
-  const data = await res.json()
-  localStorage.setItem('token', data.access_token)
-  if (data.refresh_token) localStorage.setItem('refresh_token', data.refresh_token)
-if (data.user_categories) localStorage.setItem('categories', JSON.stringify(data.user_categories))
-  return data.token
+  return refreshPromise
+}
+
+export async function logout() {
+  try {
+    await loggedFetch(`${BASE_URL}/api/users/logout`, {
+      method: 'POST',
+      headers: authHeaders('POST'),
+    })
+  } finally {
+    localStorage.removeItem('categories')
+  }
+}
+
+export async function hasSession() {
+  try {
+    await get('/api/users/profile/')
+    return true
+  } catch {
+    return false
+  }
 }
 
 async function parseResponse(res) {
@@ -78,7 +112,7 @@ export async function get(path, params) {
     })
   }
   const doRequest = () =>
-    loggedFetch(url.toString(), { method: 'GET', headers: authHeaders() })
+    loggedFetch(url.toString(), { method: 'GET', headers: authHeaders('GET') })
 
   const res = await doRequest()
   return handleResponse(res, async () => {
@@ -91,7 +125,7 @@ export async function post(path, body) {
   const doRequest = () =>
     loggedFetch(`${BASE_URL}${path}`, {
       method: 'POST',
-      headers: authHeaders(),
+      headers: authHeaders('POST'),
       body: JSON.stringify(body),
     })
 
@@ -106,7 +140,7 @@ export async function put(path, body) {
   const doRequest = () =>
     loggedFetch(`${BASE_URL}${path}`, {
       method: 'PUT',
-      headers: authHeaders(),
+      headers: authHeaders('PUT'),
       body: JSON.stringify(body),
     })
 

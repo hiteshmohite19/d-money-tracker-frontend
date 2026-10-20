@@ -12,17 +12,21 @@ import Profile from './pages/Profile'
 import Reports from './pages/Reports'
 import Wishlists from './pages/Wishlists'
 import Landing from './pages/Landing'
+import { hasSession, logout } from './api/client'
 
 function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activePage, setActivePage] = useState('Dashboard')
-  const [isLanding, setIsLanding] = useState(() => !localStorage.getItem('token'))
+  // null while we ask the backend whether the session cookie is valid
+  const [isLanding, setIsLanding] = useState(null)
   const [selectedCategory, setSelectedCategory] = useState(null)
   const [categorySource, setCategorySource] = useState('Categories')
 
   useEffect(() => {
+    hasSession().then((ok) => setIsLanding(!ok))
+  }, [])
 
-
+  useEffect(() => {
     window.history.pushState(null, "", window.location.href);
 
     const handlePopState = () => {
@@ -32,14 +36,14 @@ function App() {
     window.addEventListener("popstate", handlePopState);
 
     return () => {
-
-      if (!localStorage.getItem("token")) {
-          return;
-      }
       window.removeEventListener("popstate", handlePopState);
     };
 
   }, [])
+
+  if (isLanding === null) {
+    return <div className="min-h-screen bg-gray-100" />
+  }
 
   if (isLanding) {
     return (
@@ -79,7 +83,7 @@ function App() {
       return <Dashboard />
     }
     if (activePage === 'Profile') {
-      return <Profile onLogout={() => { localStorage.removeItem('token'); localStorage.removeItem('refresh_token'); localStorage.removeItem('categories'); setIsLanding(true) }} />
+      return <Profile onLogout={() => logout().finally(() => setIsLanding(true))} />
     }
     if (activePage === 'Reports') {
       return <Reports />
